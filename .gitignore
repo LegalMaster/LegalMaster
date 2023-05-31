@@ -1,4 +1,6 @@
 llama/
 __pycache__/
+7B/
 
 *.pth
+*.json

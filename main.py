@@ -3,24 +3,25 @@ from datasets import load_dataset
 from transformers import LlamaForCausalLM, LlamaTokenizer
 import argparse
 import socket
-from dataset import LexGlue, get_dataset
+from dataset import LexGlue, get_dataset, build_dataset
 import torch
 
+#import transformers.adapters.composition as ac
 
 def main(args):
     
     # load lex_glue dataset
     task_list = args.task_list
-    dataset = get_dataset(args.params_sharing_type)
+    dataset = build_dataset(args.params_sharing_type)
 
     print("Datasets are loaded") # dict, {task_name:data}
 
     # train
     # load llama
     model = LlamaForCausalLM.from_pretrained("./llama")
-    tokenizer = LlamaTokenizer.from_pretrained("/output/path")
-
-
+    tokenizer = LlamaTokenizer.from_pretrained("./llama")
+    model.add_adapter('LLaMA-Adapter')
+    print("adapter added")
 
     # validate
 
