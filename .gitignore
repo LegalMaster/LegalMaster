@@ -4,3 +4,5 @@ __pycache__/
 
 *.pth
 *.json
+run.sh
+*.out

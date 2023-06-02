@@ -32,10 +32,10 @@ def main(args):
 if __name__ == "__main__":
     print(f'Job is running on {socket.gethostname()}')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--params_sharing_type',
-                        default = 'hard',
-                        type = str,
-                        help = 'Multi-tasking parameter-tuning type: hard/soft' )
+    # parser.add_argument('--params_sharing_type',
+    #                     default = 'hard',
+    #                     type = str,
+    #                     help = 'Multi-tasking parameter-tuning type: hard/soft' )
     parser.add_argument('--non_parallel',
                         default=False,
                         action = 'store_true',
