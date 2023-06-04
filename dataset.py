@@ -47,7 +47,7 @@ def build_dataset(task_list, path):
     return dataset_list
 
 
-# convert dataset
+# convert dataset: unsupervised learning task
 def generate_prompt(data_point):
     return data_point["context"]
 
@@ -68,3 +68,5 @@ def tokenize(prompt, tokenizer, CUTOFF_LEN):
 def generate_and_tokenize_prompt(data_point, tokenizer, CUTOFF_LEN):
     prompt = generate_prompt(data_point)
     return tokenize(prompt, tokenizer, CUTOFF_LEN)
+
+

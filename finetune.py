@@ -30,6 +30,7 @@ def main(args):
     # parameters
     MICRO_BATCH_SIZE = args.micro_batch_size
     BATCH_SIZE = 64
+    GRADIENT_ACCUMULATION_STEPS = BATCH_SIZE // MICRO_BATCH_SIZE
     model_size = args.model_size # The size of Llama (i.e.,7B, 13B, 30B)
     EPOCHS = 1
     LEARNING_RATE = args.learning_rate
@@ -102,10 +103,11 @@ def main(args):
 
     # train
     # split data
-    train_data = dataset['train'].shuffle().map(lambda data: tokenize(data, tokenizer, CUTOFF_LEN))
-    val_data = dataset['validation'].shuffle().map(lambda data: tokenize(data, tokenizer, CUTOFF_LEN))
-    test_data = dataset['test'].shuffle().map(lambda data: tokenize(data, tokenizer, CUTOFF_LEN))
+    train_data = dataset['train'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
+    val_data = dataset['validation'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
+    test_data = dataset['test'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
     
+    # select features
     trainer = transformers.Trainer(
         model = model,
         train_dataset = train_data,
