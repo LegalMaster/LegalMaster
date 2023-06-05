@@ -155,7 +155,7 @@ if __name__ == "__main__":
                         help = 'Foundation model size (i.e., 7B, 13B, 30B)')
     parser.add_argument('--micro_batch_size',
                         type = int,
-                        default = 32,
+                        default = 16,
                         help = 'Batch size') # The bigger, the faster
     parser.add_argument('--learning_rate',
                         type = float,
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                         help = 'Where LexGlue dataset is stored')
     parser.add_argument('--output_dir',
                         type = str,
-                        default = './checkpoints',
+                        default = './checkpoints_16',
                         help = 'Where the adapter is stored')
     
     args = parser.parse_args()
