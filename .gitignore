@@ -1,9 +1,10 @@
 llama/
 __pycache__/
 7B/
-checkpoints/checkpoint-200/
-checkpoints_16/
-
+checkpoints/
+checkpoints_masked/checkpoint-200/
+checkpoints_masked/checkpoint-400/
+checkpoints_masked/checkpoint-200/
 *.pth
 *.json
 *.pkl
