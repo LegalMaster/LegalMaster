@@ -53,6 +53,7 @@ def main(args):
     path = args.data_dir
     dataset_list = build_dataset(task_list, path)
     dataset = dataset_list[0]
+    dataset = rebuild_dataset(dataset)
     print("Datasets are loaded") # dict, {task_name:data}
 
     # load model

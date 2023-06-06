@@ -5,6 +5,9 @@ checkpoints/
 checkpoints_masked/checkpoint-200/
 checkpoints_masked/checkpoint-400/
 checkpoints_masked/checkpoint-200/
+checkpoints_unmasked/checkpoint-200/
+checkpoints_unmasked/checkpoint-400/
+
 *.pth
 *.json
 *.pkl

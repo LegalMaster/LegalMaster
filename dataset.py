@@ -1,5 +1,6 @@
 from genericpath import exists
 from datasets import load_dataset
+import datasets
 from tqdm import tqdm
 import pickle
 import os
@@ -7,7 +8,7 @@ import json
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
 # load dataset
-def get_dataset(task): # split: train, test, validation
+def _get_dataset(task): # split: train, test, validation
 
     # define if it is multi-task or not
     # multi_task = True if params_sharing_type == 'hard' else False
@@ -36,7 +37,7 @@ def build_dataset(task_list, path):
 
     dataset_list = []
     for task in tqdm(task_list):
-        dataset = get_dataset(task)
+        dataset = _get_dataset(task)
         dataset_list.append(dataset)
 
         if not os.path.exists(os.path.join(path, f'{task}.pkl')):
@@ -48,11 +49,11 @@ def build_dataset(task_list, path):
 
 
 # convert dataset: unsupervised learning task
-def generate_prompt(data_point):
-    return data_point["context"]
+def _generate_prompt(data_point):
+    return data_point["text"]
 
 
-def tokenize(prompt, tokenizer, CUTOFF_LEN):
+def _tokenize(prompt, tokenizer, CUTOFF_LEN):
     result = tokenizer(
         prompt,
         truncation=True,
@@ -66,7 +67,33 @@ def tokenize(prompt, tokenizer, CUTOFF_LEN):
 
 
 def generate_and_tokenize_prompt(data_point, tokenizer, CUTOFF_LEN):
-    prompt = generate_prompt(data_point)
-    return tokenize(prompt, tokenizer, CUTOFF_LEN)
+    prompt = _generate_prompt(data_point)
+    return _tokenize(prompt, tokenizer, CUTOFF_LEN)
 
 
+def _answer(data_point):
+    return data_point['context'], data_point['endings'][data_point['label']]
+
+def _fill_masked(data_point):
+    text, masked = _answer(data_point)
+    return {
+        "text" : text.replace('(<HOLDING>)', masked)
+    }
+
+def rebuild_dataset(dataset):
+    datasetdict = {}
+    for split in tqdm(['train', 'validation', 'test']):
+        datasetdict[split] = dataset[split].map(_fill_masked).select_columns(['text'])
+    return datasets.DatasetDict(datasetdict)
+
+
+# def sampling(data_point, holding_pos):
+    
+#     data_point
+#     pass
+
+# if length > 512:
+#     bp
+#     ep
+# bp
+# ep
