@@ -40,7 +40,7 @@ Sample usage:
 python src/transformers/models/llama/convert_llama_weights_to_hf.py \
     --input_dir /path/to/downloaded/llama/weights --model_size 7B --output_dir /output/path
 ```
-
+python src/transformers/models/llama/convert_llama_weights_to_hf.py
 Thereafter, models can be loaded via:
 
 ```py
