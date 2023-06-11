@@ -8,9 +8,10 @@ import tqdm
 import shortuuid
 import pandas as pd
 import numpy as np
+import os
 
 ## dataset
-from dataset import *
+from utils.dataset import *
 
 ## models
 import torch
@@ -71,8 +72,8 @@ def prompt_engineering(data_point):
         'label' : data_point['label']
     }
 
-def run_eval(model_id, dataset, answer_path, num_gpus = 3):
-    dataset = make_dataset('./dataset')
+def run_eval(model_id, data_dir, answer_path, num_gpus = 3):
+    dataset = make_dataset(data_dir)
     questions = dataset.select_columns(['question', 'idx'])
 
     chunk_size = len(questions) // num_gpus
@@ -140,8 +141,7 @@ def evaluate(model_id, data_dir, answer_path, num_gpus):
 
     # get answers
     ray.init()
-    dataset = make_dataset(data_dir)
-    run_eval(model_id, dataset, answer_path, 3)
+    run_eval(model_id, data_dir, answer_path, 3)
 
     with open(os.path.join(answer_path, './answers.pkl', 'rb')) as f:
         answers = pickle.load(f).select_columns(['answer', 'idx'])
@@ -190,11 +190,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir',
                         type = str,
-                        default = './dataset',
+                        default = './data/prompt',
                         help = 'Where LexGlue dataset is stored')
     parser.add_argument('--answer_dir',
                         type = str,
-                        default = './answers',
+                        default = './data/answers',
                         help = 'Where answers from the model is stored')
     parser.add_argument('--gpu_num',
                         type = int,
