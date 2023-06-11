@@ -7,6 +7,12 @@ checkpoints_masked/checkpoint-400/
 checkpoints_masked/checkpoint-200/
 checkpoints_unmasked/checkpoint-200/
 checkpoints_unmasked/checkpoint-400/
+clmTutorial/
+.ipynb_checkpoints/
+causalLMTutorial.ipynb
+tutorial.ipynb
+convert_llama_weights_to_hf.py
+dataset_test.ipynb
 
 *.pth
 *.json

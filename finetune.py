@@ -1,3 +1,9 @@
+"""
+Finetune the LoRA model for Lexglue dataset, with LLaMA 7B base model.
+Usage:
+python finetune.py --task_list case_hold 
+
+"""
 # import modules: utils
 from calendar import EPOCH
 import os
@@ -131,7 +137,7 @@ def main(args):
             load_best_model_at_end = True,
             ddp_find_unused_parameters = False if ddp else None
             ),
-        data_collator = transformers.DataCollatorForLanguageModeling(tokenizer, mlm = False)
+        data_collator = transformers.DataCollatorForLanguageModeling(tokenizer, mlm = False) # causalLM
         )
 
     model.config.use_cache = False

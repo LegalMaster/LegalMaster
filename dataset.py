@@ -36,13 +36,15 @@ def build_dataset(task_list, path):
         os.mkdir(path)
 
     dataset_list = []
-    for task in tqdm(task_list):
-        dataset = _get_dataset(task)
+    if os.path.isfile(os.path.join(path, f'{task_list[0]}.pkl')):
+        with open(os.path.join(path, f'{task_list[0]}.pkl'), 'rb') as f:
+            dataset = pickle.load(f)
         dataset_list.append(dataset)
-
-        if not os.path.exists(os.path.join(path, f'{task}.pkl')):
-            with open(os.path.join(path, f'{task}.pkl'), 'wb') as f:
-                pickle.dump(dataset, f)
+    else:
+        dataset = _get_dataset(task_list[0])
+        dataset_list.append(dataset)
+        with open(os.path.join(path, f'{task_list[0]}.pkl'), 'wb') as f:
+            pickle.dump(dataset, f)
 
     print("Datasets are succesfully loaded")
     return dataset_list
@@ -62,7 +64,7 @@ def _tokenize(prompt, tokenizer, CUTOFF_LEN):
     )
     return {
         "input_ids": result["input_ids"][:-1],
-        "attention_mask": result["attention_mask"][:-1],
+        "attention_mask": result["attention_mask"][:-1], # paddig
     }
 
 
