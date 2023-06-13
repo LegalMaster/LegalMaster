@@ -10,10 +10,11 @@ import pandas as pd
 import numpy as np
 import os
 import bitsandbytes as bn
+import tqdm
 
 ## dataset
 from utils.dataset import *
-from utils.model import load_tokenizer_and_model
+from utils.model import *
 
 ## models
 import torch
@@ -74,38 +75,36 @@ def prompt_engineering(data_point):
         'label' : data_point['label']
     }
 
-def run_eval(model_id, data_dir, answer_path, num_gpus = 3):
-    dataset = make_dataset(data_dir)
+def run_eval(model_id, dataset, answer_path, num_gpus = 3):
     questions = dataset.select_columns(['question', 'idx'])
 
-    chunk_size = len(questions) // num_gpus
-    ans_handlers = []
+    # chunk_size = len(questions) // num_gpus
+    # ans_handlers = []
 
     base_model_path = './llama'
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
     adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked'
 
-    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+    tokenizer, _model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+    model = LlamaForCausalLM.from_pretrained('llama', device_map = 'auto', torch_dtype = torch.float16)
+
     print(f'Device: {_device}')
+    answers = get_model_answers(tokenizer, model, questions)
 
-    for i in range(0, len(questions), chunk_size):
-        ans_handlers.append(
-            get_model_answers.remote(
-                tokenizer, model, questions[i:i+chunk_size]
-            )
-        )
-    answers = []
+    # with torch.no_grad():
+    #     for question in questions:
+    #         answers.append(get_model_answers(tokenizer, model, question))
 
-    for ans_handler in ans_handlers:
-        answers.extend(ray.get(ans_handler))
     answers = datasets.Dataset.from_pandas(pd.DataFrame(answers)) # convert to Dataset obj
 
+    if not os.path.exists(answer_path):
+        os.makedirs(answer_path)
     # save the answer
     with open(os.path.join(answer_path, 'answers.pkl'), 'wb') as f:
         pickle.dump(answers, f)
+    torch.cuda.empty_cache()
 
-@ray.remote
-@torch.inference_mode()
+
 def get_model_answers(tokenizer, model, questions):
     
     # tokenizer = LlamaTokenizer.from_pretrained(
@@ -131,43 +130,85 @@ def get_model_answers(tokenizer, model, questions):
     # print("Applying the LoRA")
     # model = lora_model.merge_and_unload().cuda()
 
-    model.cuda()
+    model.eval()
+    device = 'cuda:0'
+    model.to(device)
     answers = []
 
-    for i, question in enumerate(tqdm(questions)):
-        prompt = question['question']
-        input_ids = tokenizer([prompt]).input_ids # [[]]
-        output_ids = model.generate(
-            torch.as_tensor(input_ids).cuda(),
-            temperature = 0.7, # manipulates how strict the model will follow the prompt instruction
-            max_new_tokens = 1024,
-        )
-        output_ids = output_ids[0][len(input_ids[0]) : ] # only take the answer, not the question prompt from the outputs
-        outputs = tokenizer.decode(output_ids, skip_special_tokens = True).strip()
-        ans_id = shortuuid.uuid()
-        answers.append(
-            {
-                "idx" : question['idx'],
-                "answer" : outputs,
-                "answer_id" : ans_id,
-                # "model_id" : model_id
+    with torch.no_grad():
+        for question in tqdm(questions):
+            prompt = question['question']
+            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].to(device)
+            # print(input_ids[:30])
+            print(f'input_ids device: {input_ids.get_device()}, model device: {next(model.parameters()).get_device()}')
+            torch.cuda.empty_cache()
 
-            }
-        )
+            # outputs = sample_decode(
+            #             input_ids,
+            #             model,
+            #             tokenizer,
+            #             # stop_words=["[|Human|]", "[|AI|]"],
+            #             max_length=1024,
+            #             temperature=0.7,
+            #         )
+
+
+            outputs = simple_decode(
+                input_ids,
+                model,
+                tokenizer,
+                max_length = 1024,
+            )
+
+            ans_id = shortuuid.uuid()
+            answers.append(
+                {
+                    "idx" : question['idx'],
+                    "answer" : outputs,
+                    "answer_id" : ans_id,
+                    # "model_id" : model_id
+
+                }
+                )
+            print(answers)
+            break
+
+    # for i, question in enumerate(tqdm(questions)):
+    #     prompt = question['question']
+    #     input_ids = tokenizer([prompt]).input_ids # [[]]
+    #     output_ids = model.generate(
+    #         torch.as_tensor(input_ids).cuda(),
+    #         temperature = 0.7, # manipulates how strict the model will follow the prompt instruction
+    #         max_new_tokens = 1024,
+    #     )
+    #     output_ids = output_ids[0][len(input_ids[0]) : ] # only take the answer, not the question prompt from the outputs
+    #     outputs = tokenizer.decode(output_ids, skip_special_tokens = True).strip()
+    #     ans_id = shortuuid.uuid()
+    #     answers.append(
+    #         {
+    #             "idx" : question['idx'],
+    #             "answer" : outputs,
+    #             "answer_id" : ans_id,
+    #             # "model_id" : model_id
+
+    #         }
+    #     )
 
         return answers
 
 
 def evaluate(model_id, data_dir, answer_path, num_gpus):
     # define model
+
     model_name = ['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
 
     # get answers
-    ray.init(num_gpus = num_gpus)
-    run_eval(model_id, data_dir, answer_path, num_gpus)
+    dataset = make_dataset(data_dir)
+    run_eval(model_id, dataset, answer_path, num_gpus)
 
-    with open(os.path.join(answer_path, './answers.pkl', 'rb')) as f:
+    with open(os.path.join(answer_path, './answers.pkl'), 'rb') as f:
         answers = pickle.load(f).select_columns(['answer', 'idx'])
+
     labels = dataset.select_columns(['label', 'idx'])
 
     dataset = datasets.concatenate_datasets([answers, labels])
@@ -176,7 +217,6 @@ def evaluate(model_id, data_dir, answer_path, num_gpus):
     calmet_handlers = []
     chunk_size = len(dataset) // num_gpus
 
-    ray.shutdown()
     ray.init(num_gpus = num_gpus)
 
     for i in range(0, len(dataset), chunk_size):
