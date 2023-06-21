@@ -22,7 +22,7 @@ def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
             base_model,
             load_in_8bit=load_8bit,
             torch_dtype=torch.float16,
-            device_map="auto",
+            device_map={"": device},
         )
         if adapter_model is not None:
             model = PeftModel.from_pretrained(
@@ -120,13 +120,14 @@ def simple_decode(
     model: torch.nn.Module,
     tokenizer: transformers.PreTrainedTokenizer,
     # stop_words: list,
-    max_length: int,
-    temperature: float = 1.0,
+    max_new_tokens: int,
+    temperature: float = 0.7,
     top_p: float = 1.0,
     top_k: int = 25,
 ) -> str:
-    generate_ids = model.generate(input_ids, max_length = max_length)
-    text = tokenizer.batch_decode(generate_ids, skip_special_tokens = True, clean_up_tokenization_spaces = False)[0]
-
+    print(f'length of the input_ids: {len(input_ids[0])}')
+    generate_ids = model.generate(input_ids, max_new_tokens = max_new_tokens)[:, len(input_ids[0]):]
+    print(f'{len(generate_ids) == len(generate_ids[:,len(input_ids):])}')
+    text = tokenizer.batch_decode(generate_ids, skip_special_tokens = True, clean_up_tokenization_spaces = False)
     print(text)
     return text

@@ -86,10 +86,18 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
     adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked'
 
     tokenizer, _model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
-    model = LlamaForCausalLM.from_pretrained('llama', device_map = 'auto', torch_dtype = torch.float16)
+    device_map = "auto"
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    ddp = world_size != 1
+    if ddp:
+        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+        GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
+ 
+
+    model = LlamaForCausalLM.from_pretrained('llama', device_map = device_map, torch_dtype = torch.float16)
 
     print(f'Device: {_device}')
-    answers = get_model_answers(tokenizer, model, questions)
+    answers = get_model_answers(tokenizer, model, questions, device_map)
 
     # with torch.no_grad():
     #     for question in questions:
@@ -100,102 +108,45 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
     if not os.path.exists(answer_path):
         os.makedirs(answer_path)
     # save the answer
-    with open(os.path.join(answer_path, 'answers.pkl'), 'wb') as f:
+    with open(os.path.join(answer_path, f'answers_{model_id}.pkl'), 'wb') as f:
         pickle.dump(answers, f)
     torch.cuda.empty_cache()
 
 
-def get_model_answers(tokenizer, model, questions):
-    
-    # tokenizer = LlamaTokenizer.from_pretrained(
-    #     './llama',
-    #     add_eos_token = True
-    # )
-    # tokenizer.pad_token_id = 0 # we will pad the sequence til the max length
+def get_model_answers(tokenizer, model, questions, device_map):
 
-    # device_map = "auto"
-
-    # base = LlamaForCausalLM.from_pretrained(
-    #     './llama',
-    #     device_map = device_map,
-    #     load_in_8bit = True,
-    # )
-    # #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
-    # adapter_path = './LegalAdapterTrainig/checkpoints_unmasked'
-    # lora_model = PeftModel.from_pretrained(
-    #     base,
-    #     adapter_path,
-    #     torch_dtype=torch.float16,
-    # )
-    # print("Applying the LoRA")
-    # model = lora_model.merge_and_unload().cuda()
-
-    model.eval()
-    device = 'cuda:0'
-    model.to(device)
     answers = []
+#     print(questions)
 
     with torch.no_grad():
-        for question in tqdm(questions):
+
+        for _idx, question in enumerate(tqdm(questions)):
             prompt = question['question']
-            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].to(device)
-            # print(input_ids[:30])
-            print(f'input_ids device: {input_ids.get_device()}, model device: {next(model.parameters()).get_device()}')
+            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda()
             torch.cuda.empty_cache()
 
-            # outputs = sample_decode(
-            #             input_ids,
-            #             model,
-            #             tokenizer,
-            #             # stop_words=["[|Human|]", "[|AI|]"],
-            #             max_length=1024,
-            #             temperature=0.7,
-            #         )
-
+#             print(f'question: {question}')
 
             outputs = simple_decode(
                 input_ids,
                 model,
                 tokenizer,
-                max_length = 1024,
+                max_new_tokens = 50,
             )
 
             ans_id = shortuuid.uuid()
             answers.append(
                 {
-                    "idx" : question['idx'],
+                    "idx" : _idx,
                     "answer" : outputs,
                     "answer_id" : ans_id,
                     # "model_id" : model_id
 
                 }
                 )
-            print(answers)
-            break
-
-    # for i, question in enumerate(tqdm(questions)):
-    #     prompt = question['question']
-    #     input_ids = tokenizer([prompt]).input_ids # [[]]
-    #     output_ids = model.generate(
-    #         torch.as_tensor(input_ids).cuda(),
-    #         temperature = 0.7, # manipulates how strict the model will follow the prompt instruction
-    #         max_new_tokens = 1024,
-    #     )
-    #     output_ids = output_ids[0][len(input_ids[0]) : ] # only take the answer, not the question prompt from the outputs
-    #     outputs = tokenizer.decode(output_ids, skip_special_tokens = True).strip()
-    #     ans_id = shortuuid.uuid()
-    #     answers.append(
-    #         {
-    #             "idx" : question['idx'],
-    #             "answer" : outputs,
-    #             "answer_id" : ans_id,
-    #             # "model_id" : model_id
-
-    #         }
-    #     )
-
-        return answers
-
+            
+    return answers
+            
 
 def evaluate(model_id, data_dir, answer_path, num_gpus):
     # define model
@@ -206,33 +157,12 @@ def evaluate(model_id, data_dir, answer_path, num_gpus):
     dataset = make_dataset(data_dir)
     run_eval(model_id, dataset, answer_path, num_gpus)
 
-    with open(os.path.join(answer_path, './answers.pkl'), 'rb') as f:
+    with open(os.path.join(answer_path, f'./answers_{model_id}.pkl'), 'rb') as f:
         answers = pickle.load(f).select_columns(['answer', 'idx'])
 
     labels = dataset.select_columns(['label', 'idx'])
 
     dataset = datasets.concatenate_datasets([answers, labels])
-
-    # calculate metric
-    calmet_handlers = []
-    chunk_size = len(dataset) // num_gpus
-
-    ray.init(num_gpus = num_gpus)
-
-    for i in range(0, len(dataset), chunk_size):
-        calmet_handlers.append(
-            calculate_metric.remote(dataset[i:i+chunk_size])
-            )
-    
-    results = [] 
-    
-    for calmet_handler in calmet_handlers:
-        results.append(ray.get(calmet_handler)) # e.g. [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0], ...]
-    
-    metrics = results.sum(axis = 0)
-    accuracy = metrics[1] / (results[0] + results[1])
-    
-    print(f'The accuracy of the {model_name} is : {accuracy}')
 
 @ray.remote
 def calculate_metric(dataset):
@@ -267,7 +197,7 @@ if __name__ == "__main__":
                         help = 'Where answers from the model is stored')
     parser.add_argument('--gpu_num',
                         type = int,
-                        default = 4,
+                        default = 2,
                         help = 'The number of gpus to use for evaluation')
     parser.add_argument('--model_id',
                         type = int,
@@ -282,5 +212,3 @@ if __name__ == "__main__":
 
     evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
 
-
-    

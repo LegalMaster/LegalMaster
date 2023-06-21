@@ -114,6 +114,7 @@ def main(args):
     val_data = dataset['validation'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
     test_data = dataset['test'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
     
+    print(f'{base_model.model.model.layers.25.mlp.up_proj.lora_B.default.weight}')
     # select features
     trainer = transformers.Trainer(
         model = model,
