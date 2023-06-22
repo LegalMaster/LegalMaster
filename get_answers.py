@@ -13,8 +13,8 @@ import bitsandbytes as bn
 import tqdm
 
 ## dataset
-from utils.dataset import *
-from utils.model import *
+from LegalAdapterTraining.utils.dataset import *
+from LegalAdapterTraining.utils.model import *
 
 ## models
 import torch
@@ -25,8 +25,8 @@ from peft import PeftModel
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
+  
+        
 # pipeline
 def make_dataset(data_dir):
     # build dataset
@@ -83,18 +83,17 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
 
     base_model_path = './llama'
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
-    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked'
+    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked/checkpoint-400'
 
-    tokenizer, _model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
-    device_map = "auto"
+    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+    device_map = {"":0}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
-    ddp = world_size != 1
-    if ddp:
-        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
-        GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
+#     ddp = world_size != 1
+#     if ddp:
+#         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+#         GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
  
-
-    model = LlamaForCausalLM.from_pretrained('llama', device_map = device_map, torch_dtype = torch.float16)
+    #model = LlamaForCausalLM.from_pretrained('llama', device_map = device_map, torch_dtype = torch.float16)
 
     print(f'Device: {_device}')
     answers = get_model_answers(tokenizer, model, questions, device_map)
@@ -127,12 +126,17 @@ def get_model_answers(tokenizer, model, questions, device_map):
 
 #             print(f'question: {question}')
 
-            outputs = simple_decode(
-                input_ids,
-                model,
-                tokenizer,
-                max_new_tokens = 50,
-            )
+#             outputs = simple_decode(
+#                 input_ids,
+#                 model,
+#                 tokenizer,
+#                 max_new_tokens = 50,
+#             )
+            outputs = sample_decode(
+                        input_ids,
+                        model,
+                        tokenizer,
+                        max_length = 50,).replace('<s>', '').replace('</s>', '')
 
             ans_id = shortuuid.uuid()
             answers.append(
@@ -144,6 +148,8 @@ def get_model_answers(tokenizer, model, questions, device_map):
 
                 }
                 )
+            print(answers)
+            break
             
     return answers
             
@@ -204,11 +210,10 @@ if __name__ == "__main__":
                         default = 0, 
                         help = '0: llama_legal, 1: llama_chat, 2: llama_legal_chat, 3: llama_chat_legal')
 
-    args = parser.parse_args()
+    args = parser.parse_args(args = [])
 
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.DEBUG)
 
     evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
-
