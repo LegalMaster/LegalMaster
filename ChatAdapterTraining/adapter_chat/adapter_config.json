@@ -1,8 +1,8 @@
 {
-  "base_model_name_or_path": "/home/sojungkim2/legalmaster/7Boutput",
+  "base_model_name_or_path": null,
   "bias": "none",
   "fan_in_fan_out": false,
-  "inference_mode": true,
+  "inference_mode": false,
   "init_lora_weights": true,
   "lora_alpha": 16,
   "lora_dropout": 0.05,
