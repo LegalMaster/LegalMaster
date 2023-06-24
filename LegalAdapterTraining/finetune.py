@@ -27,6 +27,7 @@ from peft import (
 )
 
 # import modules: dataset
+
 from datasets import load_dataset
 from utils.dataset import *
 
@@ -114,7 +115,9 @@ def main(args):
     val_data = dataset['validation'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
     test_data = dataset['test'].shuffle().map(lambda data: generate_and_tokenize_prompt(data, tokenizer, CUTOFF_LEN)).select_columns(['input_ids', 'attention_mask'])
     
-    print(f'{base_model.model.model.layers.25.mlp.up_proj.lora_B.default.weight}')
+    if args.debug: # test
+        limit = 1
+
     # select features
     trainer = transformers.Trainer(
         model = model,
@@ -134,7 +137,7 @@ def main(args):
             eval_steps = 200,
             save_steps = 200,
             output_dir = args.output_dir,
-            save_total_limit = 100,
+            save_total_limit = limit if args.debug else 100,
             load_best_model_at_end = True,
             ddp_find_unused_parameters = False if ddp else None
             ),
@@ -152,7 +155,8 @@ def main(args):
         model = torch.compile(model)
 
     trainer.train()
-    model.save_pretrained(args.output_dir)
+    trainer.save_model(args.output_dir)
+    # model.save_pretrained(args.output_dir)
 
 
 if __name__ == "__main__":
@@ -180,8 +184,12 @@ if __name__ == "__main__":
                         help = 'Where LexGlue dataset is stored')
     parser.add_argument('--output_dir',
                         type = str,
-                        default = './checkpoints_16',
+                        default = './checkpoints_unmasked',
                         help = 'Where the adapter is stored')
+    parser.add_argument('--debug',
+                        action = 'store_true',
+                        default = False,
+                        help = 'debug mode')
     
     args = parser.parse_args()
     main(args)
