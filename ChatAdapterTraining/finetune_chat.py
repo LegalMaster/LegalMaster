@@ -57,6 +57,7 @@ def main(args):
 
     # load model
     device_map = "auto"
+    print("World size:", str(os.environ.get("WORLD_SIZE")))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1 # If trying to use more than one GPU, change this number  
     
@@ -177,7 +178,8 @@ def main(args):
         model = torch.compile(model)
 
     trainer.train()
-    model.save_pretrained(args.output_dir)
+    #model.save_pretrained(args.output_dir)
+    trainer.save_model(args.output_dir)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
