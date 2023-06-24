@@ -5,4 +5,4 @@ python finetune_chat.py \
 --learning_rate 0.0002 \
 --task_list alpaca,stackoverflow,quora \
 --data_dir data \
---output_dir adapter_chat
+--output_dir adapter_chat_save

@@ -85,7 +85,7 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
     adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked'
 
-    tokenizer, _model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
     device_map = "auto"
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
@@ -93,8 +93,6 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
         GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
  
-
-    model = LlamaForCausalLM.from_pretrained('llama', device_map = device_map, torch_dtype = torch.float16)
 
     print(f'Device: {_device}')
     answers = get_model_answers(tokenizer, model, questions, device_map)
@@ -127,7 +125,7 @@ def get_model_answers(tokenizer, model, questions, device_map):
 
 #             print(f'question: {question}')
 
-            outputs = simple_decode(
+            outputs = sample_decode(
                 input_ids,
                 model,
                 tokenizer,
