@@ -27,7 +27,6 @@ from peft import (
 )
 
 # import modules: dataset
-
 from datasets import load_dataset
 from utils.dataset import *
 
@@ -66,6 +65,7 @@ def main(args):
     # load model
     device_map = "auto"
     world_size = int(os.environ.get("WORLD_SIZE",1))
+    print(f'The world size is {world_size}')
     ddp = world_size != 1 # if there are multiple GPUs, we will do distributed learning
     
     if ddp:
@@ -190,6 +190,10 @@ if __name__ == "__main__":
                         action = 'store_true',
                         default = False,
                         help = 'debug mode')
+    parser.add_argument('--num_gpus',
+                        type = int,
+                        default = 4,
+                        help = 'The number of gpus to be used')
     
     args = parser.parse_args()
     main(args)
