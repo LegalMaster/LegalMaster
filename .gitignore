@@ -1,19 +1,7 @@
 llama/
 __pycache__/
 7B/
-checkpoints/
 
-LegalAdapterTraining/checkpoints_masked/
-ChatAdpaterTraining/checkpoints_unmasked/
-LegalAdapterTraining/checkpoints_masked/checkpoint-200/
-LegalAdapterTraining/checkpoints_masked/checkpoint-400/
-LegalAdapterTraining/checkpoints_unmasked/checkpoint-200/
-LegalAdapterTraining/checkpoints_unmasked/checkpoint-400/
-ChatAdpaterTraining/checkpoints_unmasked/checkpoint-200/
-ChatAdpaterTraining/checkpoints_unmasked/checkpoint-400/
-LegalAdapterTraining/checkpoints_unmasked/checkpoint-600/trainer_state.json
-LegalAdapterTraining/checkpoints_unmasked/checkpoint-600/adapter_model.bin
-trainer_save/
 test_dir/
 
 
