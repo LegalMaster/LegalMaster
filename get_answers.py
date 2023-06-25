@@ -12,16 +12,15 @@ import os
 import bitsandbytes as bn
 import tqdm
 
-## dataset
-from LegalAdapterTraining.utils.dataset import *
-from LegalAdapterTraining.utils.model import *
-
 ## models
 import torch
 import torch.nn as nn
 import transformers
 from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
+
+## utils
+from utils import dataset, model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -83,7 +82,7 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
 
     base_model_path = './llama'
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
-    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints_unmasked/checkpoint-400'
+    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
 
     tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
     device_map = {"":0}
@@ -136,7 +135,7 @@ def get_model_answers(tokenizer, model, questions, device_map):
                         input_ids,
                         model,
                         tokenizer,
-                        max_length = 50,).replace('<s>', '').replace('</s>', '')
+                        max_length = 100,).replace('<s>', '').replace('</s>', '')
 
             ans_id = shortuuid.uuid()
             answers.append(
@@ -148,9 +147,7 @@ def get_model_answers(tokenizer, model, questions, device_map):
 
                 }
                 )
-            print(answers)
-            break
-            
+
     return answers
             
 

@@ -15,4 +15,4 @@ sys.path.append(parent)
 
 # now we can import the module in the parent
 # directory.
-from utils.dataset import *
+from utils import *
