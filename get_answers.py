@@ -20,7 +20,8 @@ from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
 
 ## utils
-from utils import dataset, model
+from utils.dataset import *
+from utils.model import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -79,7 +80,6 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
 
     # chunk_size = len(questions) // num_gpus
     # ans_handlers = []
-
     base_model_path = './llama'
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
     adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
@@ -106,7 +106,7 @@ def run_eval(model_id, dataset, answer_path, num_gpus = 3):
     if not os.path.exists(answer_path):
         os.makedirs(answer_path)
     # save the answer
-    with open(os.path.join(answer_path, f'answers_{model_id}.pkl'), 'wb') as f:
+    with open(os.path.join(answer_path, f'answers_{model_id}_50.pkl'), 'wb') as f:
         pickle.dump(answers, f)
     torch.cuda.empty_cache()
 
@@ -135,7 +135,7 @@ def get_model_answers(tokenizer, model, questions, device_map):
                         input_ids,
                         model,
                         tokenizer,
-                        max_length = 100,).replace('<s>', '').replace('</s>', '')
+                        max_length = 50,).replace('<s>', '').replace('</s>', '')
 
             ans_id = shortuuid.uuid()
             answers.append(
