@@ -36,6 +36,8 @@ from peft import (
 # import modules: dataset
 from datasets import load_dataset
 
+#os.environ["WANDB_DISABLED"] = "true"
+
 def main(args):
     # parameters
     MICRO_BATCH_SIZE = args.micro_batch_size
@@ -67,7 +69,7 @@ def main(args):
     random.shuffle(data)
     json.dump(data, open("{}/data_tmp.json".format(args.data_dir), "w"))
     data = load_dataset("json", data_files="{}/data_tmp.json".format(args.data_dir))
-
+    
     # load model
     device_map = "auto"
     print("World size:", str(os.environ.get("WORLD_SIZE")))
@@ -168,15 +170,17 @@ def main(args):
             num_train_epochs = EPOCHS,
             learning_rate = LEARNING_RATE,
             fp16 = True,
-            logging_steps = 20,
+            logging_steps = 20, 
             evaluation_strategy = "steps" if VAL_SET_SIZE > 0 else "no",
             save_strategy = "steps",
-            eval_steps = 200 if VAL_SET_SIZE > 0 else None,
+            eval_steps = 200 if VAL_SET_SIZE > 0 else None, 
             save_steps = 200,
             output_dir = args.output_dir,
             save_total_limit = 100,
             load_best_model_at_end = True if VAL_SET_SIZE > 0 else False,
-            ddp_find_unused_parameters = False if ddp else None
+            ddp_find_unused_parameters = False if ddp else None,
+            # turn WandB off
+            report_to = "none"
             ),
         data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False)
     )
