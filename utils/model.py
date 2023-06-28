@@ -5,7 +5,7 @@ from peft import PeftModel
 import transformers
 from typing import Iterator
 
-def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
+def load_tokenizer_and_model(base_model_path, adapter_path, load_8bit=False):
     if torch.cuda.is_available():
         device = "cuda"
     else:
@@ -16,42 +16,42 @@ def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
             device = "mps"
     except:  # noqa: E722
         pass
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    tokenizer = LlamaTokenizer.from_pretrained(base_model_path)
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
-            base_model,
+            base_model_path,
             load_in_8bit=load_8bit,
             torch_dtype=torch.float16,
             device_map={"": 0},
         )
-        if adapter_model is not None:
+        if adapter_path is not None:
             model = PeftModel.from_pretrained(
                 model,
-                adapter_model,
+                adapter_path,
                 torch_dtype=torch.float16,
                 device_map = {"":0}
             )
     elif device == "mps":
         model = LlamaForCausalLM.from_pretrained(
-            base_model,
+            base_model_path,
             device_map={"": device},
             torch_dtype=torch.float16,
         )
-        if adapter_model is not None:
+        if adapter_path is not None:
             model = PeftModel.from_pretrained(
                 model,
-                adapter_model,
+                adapter_path,
                 device_map={"": device},
                 torch_dtype=torch.float16,
             )
     else:
         model = LlamaForCausalLM.from_pretrained(
-            base_model, device_map={"": device}, low_cpu_mem_usage=True
+            base_model_path, device_map={"": device}, low_cpu_mem_usage=True
         )
-        if adapter_model is not None:
+        if adapter_path is not None:
             model = PeftModel.from_pretrained(
                 model,
-                adapter_model,
+                adapter_path,
                 device_map={"": device},
             )
 
@@ -60,6 +60,82 @@ def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
 
     model.eval()
     return tokenizer, model, device
+
+def load_tokenizer_and_model_multiple(base_model_path, adapter_1_path, adapter_2_path, load_8bit=False):
+    if torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+
+    try:
+        if torch.backends.mps.is_available():
+            device = "mps"
+    except:  # noqa: E722
+        pass
+    tokenizer = LlamaTokenizer.from_pretrained(base_model_path)
+    if device == "cuda":
+        base_model = LlamaForCausalLM.from_pretrained(
+            base_model_path,
+            load_in_8bit=load_8bit,
+            torch_dtype=torch.float16,
+            device_map={"": 0},
+        )
+        if adapter_1_path is not None:
+            new_base_model = PeftModel.from_pretrained(
+                base_model,
+                adapter_1_path,
+                torch_dtype=torch.float16,
+                device_map = {"":0}
+            )
+            if adapter_2_path is not None:
+                merged_model = PeftModel.from_pretrained(
+                    new_base_model,
+                    adapter_2_path,
+                    torch_dtype=torch.float16,
+                    device_map = {"":0}
+            )
+    elif device == "mps":
+        base_model = LlamaForCausalLM.from_pretrained(
+            base_model_path,
+            device_map={"": device},
+            torch_dtype=torch.float16,
+        )
+        if adapter_1_path is not None:
+            new_base_model = PeftModel.from_pretrained(
+                base_model,
+                adapter_1_path,
+                device_map={"": device},
+                torch_dtype=torch.float16,
+            )
+            if adapter_2_path is not None:
+                merged_model = PeftModel.from_pretrained(
+                    new_base_model,
+                    adapter_2_path,
+                    device_map={"": device},
+                    torch_dtype=torch.float16,
+                )
+    else:
+        base_model = LlamaForCausalLM.from_pretrained(
+            base_model_path, device_map={"": device}, low_cpu_mem_usage=True
+        )
+        if adapter_1_path is not None:
+            new_base_model = PeftModel.from_pretrained(
+                base_model,
+                adapter_1_path,
+                device_map={"": device},
+            )
+            if adapter_2_path is not None:
+                merged_model = PeftModel.from_pretrained(
+                    new_base_model,
+                    adapter_2_path,
+                    device_map={"": device},
+                )
+
+    if not load_8bit and device != "cpu":
+        merged_model.half()  # seems to fix bugs for some users.
+
+    merged_model.eval()
+    return tokenizer, merged_model, device
 
 def sample_decode(
     input_ids: torch.Tensor,

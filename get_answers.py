@@ -4,6 +4,8 @@ import logging
 import random
 import pickle
 import ray
+import sklearn
+from sklearn import datasets
 import tqdm
 import shortuuid
 import pandas as pd
@@ -20,8 +22,14 @@ from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
 
 ## utils
+<<<<<<< HEAD
 from utils.dataset import *
 from utils.model import *
+=======
+from utils import dataset, model
+from utils.dataset import build_dataset
+from utils.model import sample_decode, load_tokenizer_and_model, load_tokenizer_and_model_multiple
+>>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -75,16 +83,35 @@ def prompt_engineering(data_point):
         'label' : data_point['label']
     }
 
-def run_eval(model_id, dataset, answer_path, num_gpus = 3):
+class ModelIDAdapterMismatchError(Exception):
+    pass
+
+def run_generate(model_id, dataset, answer_path, num_gpus = 3):
     questions = dataset.select_columns(['question', 'idx'])
 
     # chunk_size = len(questions) // num_gpus
     # ans_handlers = []
+<<<<<<< HEAD
     base_model_path = './llama'
     #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
     adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
 
     tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+=======
+ 
+    print(model_id)
+    if model_id in [0, 1]:
+        if args.adapter_2_dir is not None:
+            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be empty, since only one adapter is necessary".format(model_id))
+        else:
+            tokenizer, model, _device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
+    if model_id in [2, 3]:
+        if args.adapter_2_dir is None:
+            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be given, since 2 adapters are necessary".format(model_id))
+        else:
+           tokenizer, model, _device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)        
+        
+>>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
     device_map = {"":0}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
 #     ddp = world_size != 1
@@ -116,11 +143,11 @@ def get_model_answers(tokenizer, model, questions, device_map):
     answers = []
 #     print(questions)
 
-    with torch.no_grad():
+    with torch.no_grad(): # inactivates pytorch autograd engine so that gradient is not tracked anymore, saving memory and accelerating speed
 
         for _idx, question in enumerate(tqdm(questions)):
             prompt = question['question']
-            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda()
+            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda() # index last 1024 tokens of all questions
             torch.cuda.empty_cache()
 
 #             print(f'question: {question}')
@@ -158,7 +185,7 @@ def evaluate(model_id, data_dir, answer_path, num_gpus):
 
     # get answers
     dataset = make_dataset(data_dir)
-    run_eval(model_id, dataset, answer_path, num_gpus)
+    run_generate(model_id, dataset, answer_path, num_gpus)
 
     with open(os.path.join(answer_path, f'./answers_{model_id}.pkl'), 'rb') as f:
         answers = pickle.load(f).select_columns(['answer', 'idx'])
@@ -197,7 +224,18 @@ if __name__ == "__main__":
     parser.add_argument('--answer_dir',
                         type = str,
                         default = './data/answers',
-                        help = 'Where answers from the model is stored')
+                        help = 'Where answers from the model will be stored')
+    parser.add_argument('--base_model_dir',
+                        type = str,
+                        # default = './llama',
+                        help = 'Where base model is stored')
+    parser.add_argument('--adapter_1_dir',
+                        type = str,
+                        default = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints',
+                        help = 'Where the first adapter is stored')
+    parser.add_argument('--adapter_2_dir',
+                        type = str,
+                        help = 'Where the second adapter is stored')
     parser.add_argument('--gpu_num',
                         type = int,
                         default = 2,

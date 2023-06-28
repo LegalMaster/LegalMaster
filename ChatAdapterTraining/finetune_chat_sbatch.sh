@@ -16,4 +16,8 @@ srun python finetune_chat.py \
 --learning_rate 0.0002 \
 --task_list alpaca,stackoverflow,quora \
 --data_dir data \
+<<<<<<< HEAD
 --output_dir checkpoints
+=======
+--output_dir adapter_chat_checkpoints
+>>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
