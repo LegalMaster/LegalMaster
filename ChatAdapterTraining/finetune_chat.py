@@ -69,10 +69,11 @@ def main(args):
     random.shuffle(data)
     json.dump(data, open("{}/data_tmp.json".format(args.data_dir), "w"))
     data = load_dataset("json", data_files="{}/data_tmp.json".format(args.data_dir))
-    
+    # print(data)
+
     # load model
     device_map = "auto"
-    print("World size:", str(os.environ.get("WORLD_SIZE")))
+    # print("World size:", str(os.environ.get("WORLD_SIZE")))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1 # If trying to use more than one GPU, change this number  
     
@@ -81,13 +82,13 @@ def main(args):
         GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
 
     model = LlamaForCausalLM.from_pretrained(
-        "/home/sojungkim2/legalmaster/{}output".format(model_size),
+        "/home/laal_intern003/LegalMaster/llama/",
         load_in_8bit=True, # This option saves memory
         device_map=device_map,
     )
 
     tokenizer = LlamaTokenizer.from_pretrained(
-        "/home/sojungkim2/legalmaster/{}output".format(model_size), 
+        "/home/laal_intern003/LegalMaster/llama/", 
         add_eos_token=True # add end-of-sentence token
     )
 
@@ -155,6 +156,9 @@ def main(args):
     else:
         train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
         val_data = None
+    
+    # with open('./data/train_data.pkl', 'wb') as f:
+    #     pickle.dump(train_data, f)
 
 
     # Training Setting
@@ -193,6 +197,7 @@ def main(args):
 
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
+    
 
     trainer.train()
     #model.save_pretrained(args.output_dir)
@@ -206,7 +211,7 @@ if __name__ == "__main__":
                         help = 'Foundation model size (i.e., 7B, 13B, 30B)')
     parser.add_argument('--batch_size',
                         type = int,
-                        default = 32,
+                        default = 64,
                         help = 'Batch size') # The bigger, the faster
     parser.add_argument('--micro_batch_size',
                         type = int,
@@ -225,7 +230,7 @@ if __name__ == "__main__":
                         help = 'Where dataset is stored')
     parser.add_argument('--output_dir',
                         type = str,
-                        default = 'adapter_chat',
+                        default = 'checkpoints',
                         help = 'Where the trained adapter is stored')
     
     args = parser.parse_args()

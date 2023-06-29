@@ -22,9 +22,14 @@ from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
 
 ## utils
+<<<<<<< HEAD
+from utils.dataset import *
+from utils.model import *
+=======
 from utils import dataset, model
 from utils.dataset import build_dataset
 from utils.model import sample_decode, load_tokenizer_and_model, load_tokenizer_and_model_multiple
+>>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -86,6 +91,13 @@ def run_generate(model_id, dataset, answer_path, num_gpus = 3):
 
     # chunk_size = len(questions) // num_gpus
     # ans_handlers = []
+<<<<<<< HEAD
+    base_model_path = './llama'
+    #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
+    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
+
+    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
+=======
  
     print(model_id)
     if model_id in [0, 1]:
@@ -99,6 +111,7 @@ def run_generate(model_id, dataset, answer_path, num_gpus = 3):
         else:
            tokenizer, model, _device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)        
         
+>>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
     device_map = {"":0}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
 #     ddp = world_size != 1
@@ -120,7 +133,7 @@ def run_generate(model_id, dataset, answer_path, num_gpus = 3):
     if not os.path.exists(answer_path):
         os.makedirs(answer_path)
     # save the answer
-    with open(os.path.join(answer_path, f'answers_{model_id}.pkl'), 'wb') as f:
+    with open(os.path.join(answer_path, f'answers_{model_id}_50.pkl'), 'wb') as f:
         pickle.dump(answers, f)
     torch.cuda.empty_cache()
 
@@ -149,7 +162,7 @@ def get_model_answers(tokenizer, model, questions, device_map):
                         input_ids,
                         model,
                         tokenizer,
-                        max_length = 100,).replace('<s>', '').replace('</s>', '')
+                        max_length = 50,).replace('<s>', '').replace('</s>', '')
 
             ans_id = shortuuid.uuid()
             answers.append(
