@@ -4,15 +4,15 @@ import logging
 import random
 import pickle
 import ray
-import sklearn
-from sklearn import datasets
+#from sklearn 
+import datasets
 import tqdm
 import shortuuid
 import pandas as pd
 import numpy as np
 import os
 import bitsandbytes as bn
-import tqdm
+from tqdm import tqdm
 
 ## models
 import torch
@@ -22,14 +22,8 @@ from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
 
 ## utils
-<<<<<<< HEAD
-from utils.dataset import *
-from utils.model import *
-=======
 from utils import dataset, model
-from utils.dataset import build_dataset
 from utils.model import sample_decode, load_tokenizer_and_model, load_tokenizer_and_model_multiple
->>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -86,32 +80,52 @@ def prompt_engineering(data_point):
 class ModelIDAdapterMismatchError(Exception):
     pass
 
-def run_generate(model_id, dataset, answer_path, num_gpus = 3):
+#def run_generate(model_id, dataset, answer_path, num_gpus = 3):
+def run_generate(model_id, dataset, answer_path):
     questions = dataset.select_columns(['question', 'idx'])
 
     # chunk_size = len(questions) // num_gpus
     # ans_handlers = []
-<<<<<<< HEAD
-    base_model_path = './llama'
-    #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
-    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
+    
+    # tokenizer, model, _device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
+    if torch.cuda.is_available():
+        _device = "cuda"
+    else:
+        _device = "cpu"
 
-    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
-=======
- 
-    print(model_id)
-    if model_id in [0, 1]:
-        if args.adapter_2_dir is not None:
-            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be empty, since only one adapter is necessary".format(model_id))
-        else:
-            tokenizer, model, _device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
-    if model_id in [2, 3]:
-        if args.adapter_2_dir is None:
-            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be given, since 2 adapters are necessary".format(model_id))
-        else:
-           tokenizer, model, _device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)        
+    try:
+        if torch.backends.mps.is_available():
+            _device = "mps"
+    except:  # noqa: E722
+        pass
+    
+    tokenizer = LlamaTokenizer.from_pretrained(args.base_model_dir)
+    model = LlamaForCausalLM.from_pretrained(
+        args.base_model_dir,
+        load_in_8bit=True,
+        torch_dtype=torch.float16,
+        device_map={"": 0},
+    )
+    model = PeftModel.from_pretrained(
+        model,
+        args.adapter_1_dir,
+        torch_dtype=torch.float16,
+        device_map = {"":0}
+    )
+    model.eval()
+    
+    # print(model_id)
+    # if model_id in [0, 1]:
+    #     if args.adapter_2_dir:
+    #         raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be empty, since only one adapter is necessary".format(model_id))
+    #     else:
+    #         tokenizer, model, _device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
+    # if model_id in [2, 3]:
+    #     if not args.adapter_2_dir:
+    #         raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be given, since 2 adapters are necessary".format(model_id))
+    #     else:
+    #        tokenizer, model, _device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)        
         
->>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
     device_map = {"":0}
     world_size = int(os.environ.get("WORLD_SIZE", 1))
 #     ddp = world_size != 1
@@ -127,13 +141,24 @@ def run_generate(model_id, dataset, answer_path, num_gpus = 3):
     # with torch.no_grad():
     #     for question in questions:
     #         answers.append(get_model_answers(tokenizer, model, question))
-
-    answers = datasets.Dataset.from_pandas(pd.DataFrame(answers)) # convert to Dataset obj
+    answers = pd.DataFrame(answers)
+    
+    print(answers[1])
+    print(answers[3])
+    print(answers[0])
+    print(answers[10])
+     # save the answer
+    with open(os.path.join(answer_path, f'answers_{model_id}.txt'), 'wb') as f:
+        pickle.dump(answers, f)
+    
+    answers = datasets.Dataset.from_pandas(answers) # convert to Dataset obj
+    #answers = pd.DataFrame(answers)
+    print(answers)
 
     if not os.path.exists(answer_path):
         os.makedirs(answer_path)
     # save the answer
-    with open(os.path.join(answer_path, f'answers_{model_id}_50.pkl'), 'wb') as f:
+    with open(os.path.join(answer_path, f'answers_{model_id}.pkl'), 'wb') as f:
         pickle.dump(answers, f)
     torch.cuda.empty_cache()
 
@@ -141,11 +166,12 @@ def run_generate(model_id, dataset, answer_path, num_gpus = 3):
 def get_model_answers(tokenizer, model, questions, device_map):
 
     answers = []
-#     print(questions)
 
     with torch.no_grad(): # inactivates pytorch autograd engine so that gradient is not tracked anymore, saving memory and accelerating speed
 
         for _idx, question in enumerate(tqdm(questions)):
+            if _idx > 10: 
+                break
             prompt = question['question']
             input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda() # index last 1024 tokens of all questions
             torch.cuda.empty_cache()
@@ -178,18 +204,20 @@ def get_model_answers(tokenizer, model, questions, device_map):
     return answers
             
 
-def evaluate(model_id, data_dir, answer_path, num_gpus):
+# def evaluate(model_id, data_dir, answer_path, num_gpus):
+def evaluate(model_id, data_dir, answer_path):
     # define model
 
     model_name = ['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
 
     # get answers
     dataset = make_dataset(data_dir)
-    run_generate(model_id, dataset, answer_path, num_gpus)
+    # run_generate(model_id, dataset, answer_path, num_gpus)
+    run_generate(model_id, dataset, answer_path)
 
-    with open(os.path.join(answer_path, f'./answers_{model_id}.pkl'), 'rb') as f:
+    with open(os.path.join(answer_path, f'answers_{model_id}.pkl'), 'rb') as f:
         answers = pickle.load(f).select_columns(['answer', 'idx'])
-
+    
     labels = dataset.select_columns(['label', 'idx'])
 
     dataset = datasets.concatenate_datasets([answers, labels])
@@ -227,7 +255,7 @@ if __name__ == "__main__":
                         help = 'Where answers from the model will be stored')
     parser.add_argument('--base_model_dir',
                         type = str,
-                        # default = './llama',
+                        #default = './llama',
                         help = 'Where base model is stored')
     parser.add_argument('--adapter_1_dir',
                         type = str,
@@ -235,6 +263,7 @@ if __name__ == "__main__":
                         help = 'Where the first adapter is stored')
     parser.add_argument('--adapter_2_dir',
                         type = str,
+                        required = False,
                         help = 'Where the second adapter is stored')
     parser.add_argument('--gpu_num',
                         type = int,
@@ -245,10 +274,11 @@ if __name__ == "__main__":
                         default = 0, 
                         help = '0: llama_legal, 1: llama_chat, 2: llama_legal_chat, 3: llama_chat_legal')
 
-    args = parser.parse_args(args = [])
+    args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.DEBUG)
 
-    evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
+    # generated = evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
+    evaluate(args.model_id, args.data_dir, args.answer_dir)
