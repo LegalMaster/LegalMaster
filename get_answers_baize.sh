@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=lexglue
+#SBATCH --job-name=get_answers_baize
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --time=12:00:00
@@ -10,4 +10,4 @@
 source /home/${USER}/.bashrc
 conda activate legal-master
 
-srun python get_answers.py
+srun python get_answers.py --adapter_1_dir /home/laal_intern003/LegalMaster/BaizeAdapter

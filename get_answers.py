@@ -1,9 +1,17 @@
+"""
+Get Answers from Llama mounting legal, chat adapters.
+Usage:
+python get_answers.py \
+--model_id 1 \
+--num_gpus 2 \
+--debug \
+"""
+
 # import modules
 import argparse
 import logging
 import random
 import pickle
-import ray
 import sklearn
 from sklearn import datasets
 import tqdm
@@ -12,7 +20,8 @@ import pandas as pd
 import numpy as np
 import os
 import bitsandbytes as bn
-import tqdm
+from tqdm import tqdm
+from datasets import concatenate_datasets
 
 ## models
 import torch
@@ -22,233 +31,241 @@ from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import PeftModel
 
 ## utils
-<<<<<<< HEAD
-from utils.dataset import *
-from utils.model import *
-=======
-from utils import dataset, model
 from utils.dataset import build_dataset
-from utils.model import sample_decode, load_tokenizer_and_model, load_tokenizer_and_model_multiple
->>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
-
-logger = logging.getLogger(__name__)
+from utils.model import load_tokenizer_and_model, load_tokenizer_and_model_multiple, apply_lora_multiple, sample_decode, predict, cleanse_and_split
+import logging
+logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-  
-        
-# pipeline
-def make_dataset(data_dir):
-    # build dataset
-    path = data_dir
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
-    # load file
-    if os.path.isfile(os.path.join(path, 'prompt.pkl')):
-        with open(os.path.join(path, 'prompt.pkl'), 'rb') as f:
-            dataset = pickle.load(f)
-    else:
-        dataset_list = build_dataset(['case_hold'], path)
-        dataset = dataset_list[0]['test']
-        random.seed(7)
-        dataset = dataset.shuffle().map(prompt_engineering).select_columns(['question', 'label'])
-        dataset = dataset.add_column(name = 'idx', column = range(3600))
-        # save file
-        with open(os.path.join(path, 'prompt.pkl'), 'wb') as f:
-            pickle.dump(dataset, f)
+# set arugments
+parser = argparse.ArgumentParser()
+parser.add_argument('--model_id',
+                    type = int,
+                    default = 0, 
+                    help = '0: llama_legal, 1: llama_chat, 2: llama_legal_chat, 3: llama_chat_legal')
+parser.add_argument('--num_gpus',
+                    type = int,
+                    default = 2,
+                    help = 'The number of gpus to use for evaluation')
+parser.add_argument('--max_seq_len',
+                    type = int,
+                    default = 100,
+                    help = 'Max sequence length of the input text')
+parser.add_argument('--task',
+                    type = str,
+                    default = 'case_hold',
+                    help = 'Task: case_hold, ')
+parser.add_argument('--adapter_1_dir',
+                    type = str,
+                    default = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints',
+                    help = 'Where the adapter 1 is stored')
+parser.add_argument('--adapter_2_dir',
+                    type = str,
+                    default = None,
+                    help = 'Where the adapter 2 is stored')
+parser.add_argument('--batch_size',
+                    type = int,
+                    default = 32)
+parser.add_argument('--debug',
+                    action = 'store_true',
+                    default = False)
+parser.add_argument('--resume_retrieval',
+                    action = 'store_true',
+                    default = False)
 
-    return dataset
+args = parser.parse_args()
+args.data_dir = f'/home/laal_intern003/LegalMaster/data/'
+args.question_path = f'/home/laal_intern003/LegalMaster/data/prompt/{args.task}.pkl'
+_model_name = ['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal']
+args.answer_path = f'/home/laal_intern003/LegalMaster/data/answers/{args.task}/{_model_name[args.model_id]}.pkl'
+args.base_model_dir = '/home/laal_intern003/LegalMaster/llama'
+args.save_steps = 500
 
-def prompt_engineering(data_point):
+# dataset
 
-    prompt_cands = [
-    "Please select the most suitable summary of the legal ruling that accompanies the relevant referenced decisions for the specific case. The following excerpt is from the court's decision.",
-    "Kindly choose the concise summary of the legal ruling that accompanies the relevant referenced decisions applicable to the given case. Provided below is an excerpt from the court decision.",
-    "Please decide on the most appropriate summary of the legal ruling that accompanies the relevant referenced decisions, which are relevant to the given case. Here is an excerpt from the court decision for your consideration.",
-    "Here is an excerpt from the court decision for the case. Please choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
-    "Consider the following excerpt from the court decision for the case. Your task is to select the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
-    "Given the excerpt from the court decision for the case, your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
-    "Please refer to the following excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
-    "Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case, using the excerpt from the court decision provided below.",
-    "Please review the following excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
-    "Here is the excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case."
-    ] # generated by Chat-GPT
+def make_problem(data_point):
+
+    # prompt_cands = [
+    # "Please select the most suitable summary of the legal ruling that accompanies the relevant referenced decisions for the specific case. The following excerpt is from the court's decision.",
+    # "Kindly choose the concise summary of the legal ruling that accompanies the relevant referenced decisions applicable to the given case. Provided below is an excerpt from the court decision.",
+    # "Please decide on the most appropriate summary of the legal ruling that accompanies the relevant referenced decisions, which are relevant to the given case. Here is an excerpt from the court decision for your consideration.",
+    # "Here is an excerpt from the court decision for the case. Please choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
+    # "Consider the following excerpt from the court decision for the case. Your task is to select the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
+    # "Given the excerpt from the court decision for the case, your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
+    # "Please refer to the following excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
+    # "Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case, using the excerpt from the court decision provided below.",
+    # "Please review the following excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case.",
+    # "Here is the excerpt from the court decision for the case. Your task is to choose the most appropriate short summary of the legal ruling that accompanies the referenced decisions relevant to the case."
+    # ] # generated by Chat-GPT
 
     
     _slice = data_point['context'].find('(<HOLDING>)')
     excerpt = data_point['context'][:_slice]
     choices = [str(n) + f': {c}' for n,c in enumerate(data_point['endings'])]
-    prompt = random.choice(prompt_cands)
-    input = prompt + f'\nExcerpt: {excerpt}' + f'\nChoices: {choices}'
+    # prompt = random.choice(prompt_cands)
+    input = f'Excerpt: {excerpt}' + f'\nChoices: {choices}'
 
     return {
         'question' : input,
         'label' : data_point['label']
     }
 
-class ModelIDAdapterMismatchError(Exception):
-    pass
+def make_dataset(args):
+    # build dataset
+    data_dir = args.data_dir
+    question_path = args.question_path
+    task = args.task
 
-def run_generate(model_id, dataset, answer_path, num_gpus = 3):
-    questions = dataset.select_columns(['question', 'idx'])
+    # load file
+    if os.path.isfile(question_path):
+        with open(question_path, 'rb') as f:
+            data = pickle.load(f)
+    else:
+        dataset = build_dataset(task, data_dir)
+        data = dataset['test']
+        random.seed(7)
+        data = data.shuffle().map(make_problem).select_columns(['question', 'label'])
+        data = data.add_column(name = 'idx', column = range(len(data)))
 
-    # chunk_size = len(questions) // num_gpus
-    # ans_handlers = []
-<<<<<<< HEAD
-    base_model_path = './llama'
-    #adapter_path = './adapter/'+['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
-    adapter_model_path = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints'
+        # save file
+        with open(question_path, 'wb') as f:
+            pickle.dump(data, f)
 
-    tokenizer, model, _device = load_tokenizer_and_model(base_model_path, adapter_model_path, load_8bit=True)
-=======
- 
-    print(model_id)
-    if model_id in [0, 1]:
-        if args.adapter_2_dir is not None:
-            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be empty, since only one adapter is necessary".format(model_id))
-        else:
-            tokenizer, model, _device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
-    if model_id in [2, 3]:
-        if args.adapter_2_dir is None:
-            raise ModelIDAdapterMismatchError("For model{}, your adapter_2_dir argument should be given, since 2 adapters are necessary".format(model_id))
-        else:
-           tokenizer, model, _device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)        
         
->>>>>>> 4987b3e65749e16f939940d8cff4d544f6cb8b34
-    device_map = {"":0}
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-#     ddp = world_size != 1
-#     if ddp:
-#         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
-#         GRADIENT_ACCUMULATION_STEPS = GRADIENT_ACCUMULATION_STEPS // world_size
- 
-    #model = LlamaForCausalLM.from_pretrained('llama', device_map = device_map, torch_dtype = torch.float16)
-
-    print(f'Device: {_device}')
-    answers = get_model_answers(tokenizer, model, questions, device_map)
-
-    # with torch.no_grad():
-    #     for question in questions:
-    #         answers.append(get_model_answers(tokenizer, model, question))
-
-    answers = datasets.Dataset.from_pandas(pd.DataFrame(answers)) # convert to Dataset obj
-
-    if not os.path.exists(answer_path):
-        os.makedirs(answer_path)
-    # save the answer
-    with open(os.path.join(answer_path, f'answers_{model_id}_50.pkl'), 'wb') as f:
-        pickle.dump(answers, f)
-    torch.cuda.empty_cache()
+    return data
 
 
-def get_model_answers(tokenizer, model, questions, device_map):
+def get_model_answers(args, data):   
+
+    # load model
+    if args.adapter_2_dir == None:
+        tokenizer, model, device = load_tokenizer_and_model(args.base_model_dir, args.adapter_1_dir, load_8bit=True)
+    else:
+        tokenizer, model, device = load_tokenizer_and_model_multiple(args.base_model_dir, args.adapter_1_dir, args.adapter_2_dir, load_8bit=True)
+     
+    # arrange data
+
+    questions = data['question']
+    labels = data['label']
 
     answers = []
-#     print(questions)
-
-    with torch.no_grad(): # inactivates pytorch autograd engine so that gradient is not tracked anymore, saving memory and accelerating speed
-
-        for _idx, question in enumerate(tqdm(questions)):
-            prompt = question['question']
-            input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda() # index last 1024 tokens of all questions
-            torch.cuda.empty_cache()
-
-#             print(f'question: {question}')
-
-#             outputs = simple_decode(
-#                 input_ids,
-#                 model,
-#                 tokenizer,
-#                 max_new_tokens = 50,
-#             )
-            outputs = sample_decode(
-                        input_ids,
-                        model,
-                        tokenizer,
-                        max_length = 50,).replace('<s>', '').replace('</s>', '')
-
-            ans_id = shortuuid.uuid()
-            answers.append(
-                {
-                    "idx" : _idx,
-                    "answer" : outputs,
-                    "answer_id" : ans_id,
-                    # "model_id" : model_id
-
-                }
-                )
-
-    return answers
-            
-
-def evaluate(model_id, data_dir, answer_path, num_gpus):
-    # define model
-
-    model_name = ['llama_legal', 'llama_chat', 'llama_legal_chat', 'llama_chat_legal'][model_id]
 
     # get answers
-    dataset = make_dataset(data_dir)
-    run_generate(model_id, dataset, answer_path, num_gpus)
+    for idx, question in enumerate(tqdm(questions)):
+        # prompt = question
+        # input_ids = tokenizer([prompt], return_tensors = 'pt')['input_ids'][:, -1024:].cuda() # index last 1024 tokens of all questions
+        # torch.cuda.empty_cache()
+        print(f"{question}")
+        response = predict(text = question,
+                tokenizer = tokenizer,
+                model = model,
+                top_p = 0.95,
+                temperature = 1.0,
+                max_length_tokens = 512,
+                max_context_length_tokens = 2048,
+                device = device)
 
-    with open(os.path.join(answer_path, f'./answers_{model_id}.pkl'), 'rb') as f:
-        answers = pickle.load(f).select_columns(['answer', 'idx'])
+        for r in response:
+            answer = r[0]
+            answer = cleanse_and_split(answer)
+            answers.append(answer)
 
-    labels = dataset.select_columns(['label', 'idx'])
+        print("="*80)
+        logger.info(f'answers: {answers[idx]}')
+        print("Generated")
+        # ans_id = shortuuid.uuid()
+        # answers.append(
+        #     {
+        #         "idx" : _idx,
+        #         "answer" : outputs,
+        #         "answer_id" : ans_id,
+        #         # "model_id" : model_id
 
-    dataset = datasets.concatenate_datasets([answers, labels])
+        #     }
+        #     )
+        if args.debug:
+            break
+        
+        flag = False
+        if idx != 0 and idx%args.save_steps== 0 and flag:
+            # update retrieval state
+            save_state(idx, args)
 
-@ray.remote
-def calculate_metric(dataset):
+            # save answers
+            indices = [i for i in range(args.steps, args.steps + args.save_steps)]
+            questions = questions[indices[0]: indices[0]+args.save_steps]
+            labels = labels[indices[0]: indices[0]+args.save_steps]
+            save_answers(args, indices, questions, answers)
 
-    for i, data in enumerate(dataset):
+    if not args.debug:
+        answers = datasets.Dataset.from_pandas(pd.DataFrame({'idx': indices, 'question': questions, 'answer': answers})) # convert to Dataset obj
+        with open(args.answer_path, 'wb') as f:
+            pickle.dump(data, f)
 
-        idx = dataset['idx']
-        answer = dataset['answer']
-        label = dataset['label']
+def save_answers(args, indices, questions, answers):
 
-        incorrect_correct_labels = np.array([0,0,0,0,0,0,0]) # one-hot-encoding: [incorrect, correct, 0,1,2,3,4 (ground truth)]
+    data_saved = datasets.Dataset.from_pandas(pd.DataFrame({'idx': indices, 'question': questions, 'answer': answers})) # convert to Dataset obj
 
-        r = int(label in answer) # incorrect: 0, correct: 1
-        incorrect_correct_labels[r] += 1
-        incorrect_correct_labels[label+2] += 1
+    if os.path.isfile(args.answer_path):
+        with open(args.answer_path, 'rb') as f:
+            prev_data = pickle.load(f)
+
+    data = concatenate_datasets([prev_data, data_saved])
+    with open(args.answer_path, 'wb') as f:
+        pickle.dump(data, f)
+    torch.cuda.empty_cache()
+
+def save_state(idx, args):
+    step = 0
+    import json
+    retrieval_state_path = os.path.join(args.answer_path, 'retrieval_state.json')
+    if os.path.isfile(retrieval_state_path):
+        with open(retrieval_state_path, 'r') as f:
+            step = json.load(f)['step']
+    args.step = step + idx
+
+    retrieval_state = {}
+    for arg in vars(args):
+        retrieval_state[arg] = getattr(args,arg)
+
+    with open(retrieval_state_path, 'w') as f:
+        json.dump(retrieval_state, f)
+
+            
+def evaluate(args):
+
+    # make dataset
+    data = make_dataset(args)
+    print("Let's get model's answers")
+    get_model_answers(args, data)
+
+    # with open(args.answer_path, 'rb') as f:
+    #     answers = pickle.load(f).select_columns(['answer', 'idx'])
+
+    # labels = dataset.select_columns(['label', 'idx'])
+    # dataset = datasets.concatenate_datasets([answers, labels])
+
+# def calculate_metric(dataset):
+
+#     for i, data in enumerate(dataset):
+
+#         idx = dataset['idx']
+#         answer = dataset['answer']
+#         label = dataset['label']
+
+#         incorrect_correct_labels = np.array([0,0,0,0,0,0,0]) # one-hot-encoding: [incorrect, correct, 0,1,2,3,4 (ground truth)]
+
+#         r = int(label in answer) # incorrect: 0, correct: 1
+#         incorrect_correct_labels[r] += 1
+#         incorrect_correct_labels[label+2] += 1
     
-    return incorrect_correct_labels
+#     return incorrect_correct_labels
+
+# #evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
 
 
-#def chatgpt_get_answer(gpt_key):
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir',
-                        type = str,
-                        default = './data/prompt',
-                        help = 'Where LexGlue dataset is stored')
-    parser.add_argument('--answer_dir',
-                        type = str,
-                        default = './data/answers',
-                        help = 'Where answers from the model will be stored')
-    parser.add_argument('--base_model_dir',
-                        type = str,
-                        # default = './llama',
-                        help = 'Where base model is stored')
-    parser.add_argument('--adapter_1_dir',
-                        type = str,
-                        default = '/home/laal_intern003/LegalMaster/LegalAdapterTraining/checkpoints',
-                        help = 'Where the first adapter is stored')
-    parser.add_argument('--adapter_2_dir',
-                        type = str,
-                        help = 'Where the second adapter is stored')
-    parser.add_argument('--gpu_num',
-                        type = int,
-                        default = 2,
-                        help = 'The number of gpus to use for evaluation')
-    parser.add_argument('--model_id',
-                        type = int,
-                        default = 0, 
-                        help = '0: llama_legal, 1: llama_chat, 2: llama_legal_chat, 3: llama_chat_legal')
-
-    args = parser.parse_args(args = [])
-
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                        datefmt='%m/%d/%Y %H:%M:%S',
-                        level=logging.DEBUG)
-
-    evaluate(args.model_id, args.data_dir, args.answer_dir, args.gpu_num)
+evaluate(args)
