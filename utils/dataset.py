@@ -7,48 +7,34 @@ import os
 import json
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
-# load dataset
-def _get_dataset(task): # split: train, test, validation
-
-    # define if it is multi-task or not
-    # multi_task = True if params_sharing_type == 'hard' else False
-    task_list = ['ecthr_a', 'ecthr_b', 'eurlex', 'scotus', 'ledgar', 'unfair_tos', 'case_hold']
-    if task not in task_list:
-        raise ValueError(f'The task is not in the task_list! {task}')
-
-    dataset = load_dataset('lex_glue', task)
-
-    # # turn the datset into a dict
-    # data = {}
-    # for split in ['train', 'test', 'validation']:
-    #     keys = dataset[f'{split}'].features.keys()
-    #     data[f'{split}'] = {}
-
-    #     for key in keys:
-    #         data[f'{split}'][f'{key}'] = dataset[f'{split}'][key]
-
-    return dataset
-
 # build dataset
-def build_dataset(task_list, path):
+def build_dataset(task, path):
 
     if not os.path.exists(path):
         os.mkdir(path)
 
-    dataset_list = []
-    if os.path.isfile(os.path.join(path, f'{task_list[0]}.pkl')):
-        with open(os.path.join(path, f'{task_list[0]}.pkl'), 'rb') as f:
+    if os.path.isfile(os.path.join(path, f'{task}.pkl')):
+        with open(os.path.join(path, f'{task}.pkl'), 'rb') as f:
             dataset = pickle.load(f)
-        dataset_list.append(dataset)
     else:
-        dataset = _get_dataset(task_list[0])
-        dataset_list.append(dataset)
-        with open(os.path.join(path, f'{task_list[0]}.pkl'), 'wb') as f:
+        # load dataset
+        def get_dataset(task): # split: train, test, validation
+
+            # define if it is multi-task or not
+            # multi_task = True if params_sharing_type == 'hard' else False
+            task_list = ['ecthr_a', 'ecthr_b', 'eurlex', 'scotus', 'ledgar', 'unfair_tos', 'case_hold']
+            if task not in task_list:
+                raise ValueError(f'The task is not in the task_list! {task}')
+
+            dataset = load_dataset('lex_glue', task)
+            return dataset
+
+        dataset = get_dataset(task)
+        with open(os.path.join(path, f'{task}.pkl'), 'wb') as f:
             pickle.dump(dataset, f)
 
     print("Datasets are succesfully loaded")
-    return dataset_list
-
+    return dataset
 
 # convert dataset: unsupervised learning task
 def _generate_prompt(data_point):
@@ -98,13 +84,29 @@ def rebuild_dataset(dataset):
     return dataset_rebuilt
 
 
-# def sampling(data_point, holding_pos):
-    
-#     data_point
-#     pass
+import pickle
+def build_mc_dataset(data_dir):
+    # load dataset
+    if os.path.isfile(data_dir):
+        with open(data_dir, 'rb') as f:
+            data_mapped = pickle.load(f)
+    else:    
+        with open(data_dir, 'rb') as f:
+            data = pickle.load(f)
 
-# if length > 512:
-#     bp
-#     ep
-# bp
-# ep
+        def preprocess_function(examples):
+            context_sentences = [[context] * 5 for context in examples["context"]]
+            ending_sentences = [endings for endings in examples['endings']]
+            print(context_sentences)
+            print(ending_sentences)
+            context_sentences = sum(context_sentences, [])
+            ending_sentences = sum(ending_sentences, [])
+
+            tokenized_examples = tokenizer(context_sentences, ending_sentences, truncation=True)
+            return {k: [v[i : i + 5] for i in range(0, len(v), 5)] for k, v in tokenized_examples.items()}
+
+
+        data_mapped = data.map(preprocess_function, batched = True)
+        with open(data_dir, 'wb') as f:
+            pickle.dump(data_mapped, f)
+    return data_mapped

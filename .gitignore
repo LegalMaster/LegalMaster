@@ -12,6 +12,16 @@ convert_llama_weights_to_hf.py
 dataset_test.ipynb
 utils.multiple_choice.py
 utils.py
+LegalAdapterTraining/checkpoints/checkpoint-600/adapter_model.bin
+LlamaForMultipleChoice_Tutorial.ipynb
+test_checkpoints/
+MCAdapter/
+BaizeAdapter/
+checkpoints/
+
+
+
+
 
 *.pth
 *.pkl
