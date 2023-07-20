@@ -1,0 +1,275 @@
+[33mcommit e24d7529f02e4bb26a07050b9b34ac5babff8cc2[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Merge: dbe1e8e 7b85983
+Author: sojungmel <sojung.kim.stat@gmail.com>
+Date:   Thu Jun 29 14:35:12 2023 +0900
+
+    test
+
+[33mcommit dbe1e8e115ee97670fafb80784ccc6c814827e1e[m
+Author: sojungmel <sojung.kim.stat@gmail.com>
+Date:   Wed Jun 28 11:33:37 2023 +0900
+
+    chat adapter fine-tuning experiments
+
+[33mcommit 7b8598365d5702d5664f93198df1c861207bc042[m
+Merge: 49711b7 4987b3e
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed Jun 28 11:22:58 2023 +0900
+
+    chatadapter updated
+
+[33mcommit 49711b7d8a957e959e6680e954e8084260b5e2ad[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed Jun 28 11:18:41 2023 +0900
+
+    chat adapter updated
+
+[33mcommit 4987b3e65749e16f939940d8cff4d544f6cb8b34[m
+Author: sojungmel <“sojung.kim.stat@gmail.com”>
+Date:   Mon Jun 26 05:07:20 2023 +0900
+
+    changes in utils/model.py and get_answers.py to enable merging 2 adapters on llama base model
+
+[33mcommit a0ce4d423175a4e3a636ad2474060ae345fa40a2[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 25 11:15:27 2023 +0900
+
+    get answers updated
+
+[33mcommit 0e9ae97e53b3ccb525c5716f07acf0bb945f9fbe[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 25 07:41:35 2023 +0900
+
+    LegalAdapter checkpoints
+
+[33mcommit 3bd4318291eb62f81aea167a34e969c0eaf710b5[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 25 07:34:48 2023 +0900
+
+    get answers
+
+[33mcommit a0648f2721719f4d84c0198002282130410e0c60[m
+Merge: fef3df6 2623d18
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 25 07:30:48 2023 +0900
+
+    Merge branch 'main' of https://github.com/OnedayOneyeah/LegalMaster into main
+
+[33mcommit fef3df618d2ba4641517c48c62ba081e03b9e480[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 25 07:30:01 2023 +0900
+
+    LegalAdapter
+
+[33mcommit 2623d180a9ec7ee9952c4e6d73903d80c7c448a1[m
+Merge: 37ae028 93661e9
+Author: “Sojung <“sojung.kim.stat@gmail.com”>
+Date:   Sat Jun 24 18:08:08 2023 +0900
+
+    chat adapter saved with save_model
+
+[33mcommit 37ae028c974666874b3b2d5444c478454f4c3b37[m
+Author: “Sojung <“sojung.kim.stat@gmail.com”>
+Date:   Sat Jun 24 17:54:23 2023 +0900
+
+    chat adapter saved with save_model
+
+[33mcommit 93661e9929d30176e562c55bad9f54cbbd7eea06[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Thu Jun 22 17:57:30 2023 +0900
+
+    get_answers updated
+
+[33mcommit 4b8f978bb1860079710961fe7d595728c05e6566[m
+Author: “Sojung <“sojung.kim.stat@gmail.com”>
+Date:   Thu Jun 22 16:05:03 2023 +0900
+
+    ..
+
+[33mcommit 70b4f87d60fa618a49da0ec2419a5d6c0e3fe9d3[m
+Merge: 2eefaa7 dd17b1f
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed Jun 21 17:41:56 2023 +0900
+
+    Merge branch 'main' of https://github.com/OnedayOneyeah/LegalMaster into main
+
+[33mcommit 2eefaa7d7410030c92dfa9abea13d63f8b9a6b7b[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed Jun 21 17:40:32 2023 +0900
+
+    get_answers pipeline updated
+
+[33mcommit dd17b1f7c3d4eb7cd9802d4d363eee1b90a3d09b[m
+Merge: aa3a9e1 8e6cab4
+Author: “Sojung <“sojung.kim.stat@gmail.com”>
+Date:   Tue Jun 20 16:10:42 2023 +0900
+
+    re
+
+[33mcommit 8e6cab4250b6c15da6001d4b9af370f2fdd16b7e[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Tue Jun 13 16:40:37 2023 +0900
+
+    update
+
+[33mcommit aa3a9e1f8e061ce253340ad18da90c6cd61dee8a[m
+Author: sojungkim2 <“sojung.kim.stat@gmail.com”>
+Date:   Tue Jun 13 15:08:17 2023 +0900
+
+    add adapter_config.json
+
+[33mcommit 1e8574f0dbfc7004a7053891a54217489996a907[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Tue Jun 13 14:56:27 2023 +0900
+
+    LegalAdapter adapter config updated
+
+[33mcommit afb9139815255446bc2de60af6a4bcd581d3e749[m
+Merge: fee3a8b 6d06788
+Author: sojungkim2 <“sojung.kim.stat@gmail.com”>
+Date:   Mon Jun 12 15:52:06 2023 +0900
+
+    incomplete adapter fusion code added
+
+[33mcommit fee3a8b3aa23f36186298592436064384fc84642[m
+Author: sojungkim2 <“sojung.kim.stat@gmail.com”>
+Date:   Mon Jun 12 15:47:56 2023 +0900
+
+    incomplete adapter fusion code added
+
+[33mcommit 6d06788a627bb0847b83ed62fa93aaf95376d5a1[m
+Merge: 61f59b1 42cd47a
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 11 17:53:05 2023 +0900
+
+    eval pipeline
+
+[33mcommit 61f59b1479d1afd43e8259ad49e41aa2626b3d1e[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 11 17:29:50 2023 +0900
+
+    eval_pipeline added
+
+[33mcommit 42cd47ad202507f52e4cbe20abce9319ae11faed[m
+Author: sojungkim2 <“sojung.kim.stat@gmail.com”>
+Date:   Sat Jun 10 21:32:44 2023 +0900
+
+    Chat Adapter Added
+
+[33mcommit 3f59b2bb0a12c9f0b3b4b7e049794123f4be8796[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Tue Jun 6 21:32:34 2023 +0900
+
+    adapter trained with unmasked holding
+
+[33mcommit 02dde51735dafa08ad58df6938458038bc022815[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Mon Jun 5 18:16:37 2023 +0900
+
+    adapter trained with masked holding
+
+[33mcommit 2c56ad27be3ec181d16ac529214095aa83d29c9e[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Mon Jun 5 10:36:44 2023 +0900
+
+    adapter checkpoint
+
+[33mcommit 88582bc2b2118577689426952dee3130f1211bd1[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Sun Jun 4 18:54:15 2023 +0900
+
+    Finetuning LLAMA LoRA with LexGlue dataset
+
+[33mcommit b302bc652df97544ec5d91acaed0f78b681af1e3[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Fri Jun 2 19:37:21 2023 +0900
+
+    finetune llama with lora
+
+[33mcommit 97c0b2256c4d190c397ce82b5c2894114c63b1cd[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed May 31 11:44:16 2023 +0900
+
+    README file deleted
+
+[33mcommit 3716ef64658ac6c234d5c7a16c3e3a445dfd174e[m
+Merge: 04b4f23 51368a0
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Wed May 31 11:42:00 2023 +0900
+
+    data loading module updated
+
+[33mcommit 04b4f2345f24a829da8004d4fd8170378835b327[m
+Author: Chloe Han <judyjr1028@gmail.com>
+Date:   Mon May 29 22:53:10 2023 +0900
+
+    dataset loading module added
+
+[33mcommit 61ef62727bdf97d2248cd3c2240629ac8fca21b8[m
+Author: Chloe Han <98785458+OnedayOneyeah@users.noreply.github.com>
+Date:   Fri May 26 14:57:44 2023 +0900
+
+    Initial commit
+
+[33mcommit 51368a0650f986423154813ab85d2eb8069f8e73[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Tue Mar 7 18:15:35 2023 -0600
+
+    Separate the mac instructions into two code blocks
+    
+    This allows easily copy-pasting the download command without always copying the `brew install` commands.
+
+[33mcommit 28652a14e89e8282d048d257e0c14e43be68eecc[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Tue Mar 7 17:47:28 2023 -0600
+
+    Add LICENSE file
+
+[33mcommit d136f9650ad317592b853cec2eb419eac90a0993[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Tue Mar 7 15:41:27 2023 -0600
+
+    Add news section
+
+[33mcommit 568b58424edc334d8f35aee99f250eba2f853cbf[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Tue Mar 7 15:26:10 2023 -0600
+
+    Update README.md
+
+[33mcommit 981c4a3fe83770e21a84767578591a504349e0ae[m
+Merge: 8ff728f 4330598
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Tue Mar 7 15:24:41 2023 -0600
+
+    Merge pull request #3 from n1tk/patch-1
+    
+    Added `brew install wget` to the download command for Mac users
+
+[33mcommit 4330598fb0bed29c3cbabda09a7b0fc5e8643f93[m
+Author: SB <buciuser@gmail.com>
+Date:   Mon Mar 6 12:56:10 2023 -0500
+
+    added wget requirements
+    
+    bash won't suffice since script does rely on 'wget', more clean way implemented for users to run on mac.
+
+[33mcommit 8ff728f836a7a2b8208dc2c208acc02f3d423087[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Sun Mar 5 13:13:29 2023 -0600
+
+    Update README.md
+
+[33mcommit d7a7c2c74c0b332e591a43d61ad815cc680f04e5[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Sun Mar 5 12:12:58 2023 -0600
+
+    Cut anecdote; move file list to a separate gist
+
+[33mcommit 9e4af7a16a87cb6f62629176f16b9ca422b1e106[m
+Author: Shawn Presser <shawnpresser@gmail.com>
+Date:   Sun Mar 5 11:55:33 2023 -0600
+
+    Refactor README.md
+
+[33mcommit da320988b029970f713eb141663e044db2038b40
