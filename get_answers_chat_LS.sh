@@ -1,5 +1,4 @@
-python get_answers.py \
---base_model_dir /home/sojungkim2/legalmaster/7Boutput \
+python get_answers_0805.py \
 --adapter_1_dir  /home/sojungkim2/legalmaster/LegalMaster/ChatAdapterTraining/baize_lora_v1 \
---gpu_num 1 \
---model_id 1000
+--num_gpus 3 \
+--model_id 11

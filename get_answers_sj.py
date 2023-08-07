@@ -165,8 +165,6 @@ def run_generate(model_id, dataset, answer_path):
 def get_model_answers(tokenizer, model, questions, device_map):
 
     answers = pd.DataFrame(columns = ["prompt_id", "prompt","answer_id", "answer", "label"])
-    json_answers = 
-    
 
     with torch.no_grad(): # inactivates pytorch autograd engine so that gradient is not tracked anymore, saving memory and accelerating speed
 
@@ -190,7 +188,8 @@ def get_model_answers(tokenizer, model, questions, device_map):
                         input_ids,
                         model,
                         tokenizer,
-                        max_length = 50,).replace('<s>', '').replace('</s>', '')
+                        max_length = 100,)
+            print(outputs)
 
             ans_id = shortuuid.uuid()
             print(answers)
